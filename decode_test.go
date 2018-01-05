@@ -676,6 +676,11 @@ var unmarshalTests = []struct {
 			"Override anchor":   "Bar",
 		},
 	},
+	// Single document with garbage following it.
+	{
+		"---\nhello\n...\n}not yaml",
+		"hello",
+	},
 }
 
 type M map[interface{}]interface{}
