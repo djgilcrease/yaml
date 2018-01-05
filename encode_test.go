@@ -1,16 +1,18 @@
 package yaml_test
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 	"time"
 
-	. "gopkg.in/check.v1"
-	"gopkg.in/yaml.v2"
 	"net"
 	"os"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/yaml.v2"
 )
 
 var marshalIntTest = 123
@@ -303,7 +305,7 @@ var marshalTests = []struct {
 		"a: 1.2.3.4\n",
 	},
 	{
-		map[string]time.Time{"a": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
+		map[string]time.Time{"a": time.Unix(1424801979, 0)},
 		"a: 2015-02-24T18:19:39Z\n",
 	},
 
@@ -328,11 +330,48 @@ func (s *S) TestMarshal(c *C) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range marshalTests {
-		c.Logf("test %d: %q", i, item.data)
+		c.Logf("test %d. %q", i, item.data)
 		data, err := yaml.Marshal(item.value)
 		c.Assert(err, IsNil)
 		c.Assert(string(data), Equals, item.data)
 	}
+}
+
+func (s *S) TestEncoderSingleDocument(c *C) {
+	for i, item := range marshalTests {
+		c.Logf("test %d. %q", i, item.data)
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		err := enc.Encode(item.value)
+		c.Assert(err, Equals, nil)
+		err = enc.Close()
+		c.Assert(err, Equals, nil)
+		c.Assert(buf.String(), Equals, item.data)
+	}
+}
+
+func (s *S) TestEncoderMultipleDocuments(c *C) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	err := enc.Encode(map[string]string{"a": "b"})
+	c.Assert(err, Equals, nil)
+	err = enc.Encode(map[string]string{"c": "d"})
+	c.Assert(err, Equals, nil)
+	err = enc.Close()
+	c.Assert(err, Equals, nil)
+	c.Assert(buf.String(), Equals, "a: b\n---\nc: d\n")
+}
+
+func (s *S) TestEncoderWriteError(c *C) {
+	enc := yaml.NewEncoder(errorWriter{})
+	err := enc.Encode(map[string]string{"a": "b"})
+	c.Assert(err, ErrorMatches, `yaml: write error: some write error`) // Data not flushed yet
+}
+
+type errorWriter struct{}
+
+func (errorWriter) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("some write error")
 }
 
 var marshalErrorTests = []struct {
