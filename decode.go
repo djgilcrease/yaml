@@ -233,6 +233,7 @@ var (
 	defaultMapType = reflect.TypeOf(map[string]interface{}{})
 	ifaceType      = defaultMapType.Elem()
 	timeType       = reflect.TypeOf(time.Time{})
+	ptrTimeType    = reflect.TypeOf(&time.Time{})
 )
 
 func newDecoder(strict bool) *decoder {
